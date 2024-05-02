@@ -90,11 +90,9 @@ RUN chown odoo /etc/odoo/odoo.conf \
     && chown -R odoo /mnt/extra-addons
 
 #Ecuador Localization installation
+RUN cd /mnt/extra-addons
 RUN git clone https://github.com/Odoo-EC/l10n-ecuador.git
-RUN pip3 install -r requirements.txt
-
-RUN /mnt/extra-addons
-
+RUN pip3 install -r ./l10n-ecuador/requirements.txt
 
 # Expose Odoo services
 EXPOSE 8069 8071 8072
