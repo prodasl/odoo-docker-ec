@@ -1,5 +1,5 @@
 FROM ubuntu:jammy
-MAINTAINER Odoo S.A. <info@odoo.com>
+MAINTAINER DLTek <countonme@dltek.ec>
 
 SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 
@@ -54,45 +54,54 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/* wkhtmltox.deb
 
 # install latest postgresql-client
-RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main' > /etc/apt/sources.list.d/pgdg.list \
-    && GNUPGHOME="$(mktemp -d)" \
-    && export GNUPGHOME \
-    && repokey='B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8' \
-    && gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "${repokey}" \
-    && gpg --batch --armor --export "${repokey}" > /etc/apt/trusted.gpg.d/pgdg.gpg.asc \
-    && gpgconf --kill all \
-    && rm -rf "$GNUPGHOME" \
-    && apt-get update  \
-    && apt-get install --no-install-recommends -y postgresql-client \
-    && rm -f /etc/apt/sources.list.d/pgdg.list \
-    && rm -rf /var/lib/apt/lists/*
+RUN 	echo 'deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main' > /etc/apt/sources.list.d/pgdg.list \
+&& 	GNUPGHOME="$(mktemp -d)" \
+&& 	export GNUPGHOME \
+&& 	repokey='B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8' \
+&& 	gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "${repokey}" \
+&& 	gpg --batch --armor --export "${repokey}" > /etc/apt/trusted.gpg.d/pgdg.gpg.asc \
+&& 	gpgconf --kill all \
+&& 	rm -rf "$GNUPGHOME" \
+&& 	apt-get update  \
+&& 	apt-get install --no-install-recommends -y postgresql-client \
+&& 	rm -f /etc/apt/sources.list.d/pgdg.list \
+&& 	rm -rf /var/lib/apt/lists/*
 
 # Install rtlcss (on Debian buster)
-RUN npm install -g rtlcss
+RUN 	npm install -g rtlcss
 
 # Install Odoo
-ENV ODOO_VERSION 17.0
-ARG ODOO_RELEASE=20240429
-ARG ODOO_SHA=12866ffdf469ce8e4639205bd74d59c211f37ed2
-RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/odoo_${ODOO_VERSION}.${ODOO_RELEASE}_all.deb \
-    && echo "${ODOO_SHA} odoo.deb" | sha1sum -c - \
-    && apt-get update \
-    && apt-get -y install --no-install-recommends ./odoo.deb \
-    && rm -rf /var/lib/apt/lists/* odoo.deb
+ENV 	ODOO_VERSION 17.0
+ARG 	ODOO_RELEASE=20240429
+ARG 	ODOO_SHA=12866ffdf469ce8e4639205bd74d59c211f37ed2
+RUN 	curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/odoo_${ODOO_VERSION}.${ODOO_RELEASE}_all.deb \
+&& 	echo "${ODOO_SHA} odoo.deb" | sha1sum -c - \
+&& 	apt-get update \
+&& 	apt-get -y install --no-install-recommends ./odoo.deb \
+&& 	rm -rf /var/lib/apt/lists/* odoo.deb
 
 # Copy entrypoint script and Odoo configuration file
 COPY ./entrypoint.sh /
 COPY ./odoo.conf /etc/odoo/
 
+# Create extra-addons folder
+RUN mkdir /mnt/extra-addons/ \ 
+&&  chmod -R /mnt/extra-addons
+
 # Set permissions and Mount /var/lib/odoo to allow restoring filestore and /mnt/extra-addons for users addons
 RUN chown odoo /etc/odoo/odoo.conf \
-    && mkdir -p /mnt/extra-addons \
-    && chown -R odoo /mnt/extra-addons
+&&	chown -R odoo /var/lib/odoo
 
 #Ecuador Localization installation
-RUN cd /mnt/extra-addons
-RUN git clone https://github.com/Odoo-EC/l10n-ecuador.git
-RUN pip3 install -r ./l10n-ecuador/requirements.txt
+RUN git clone https://github.com/Odoo-EC/l10n-ecuador.git \
+&&  mv l10n-ecuador/* /mnt/extra-addons/ \
+&&  pip3 install -r /mnt/extra-addons/requirements.txt
+
+#Payroll plugin
+RUN git clone https://github.com/odoomates/odooapps.git \
+&&  mv odooapps/* /mnt/extra-addons/
+
+RUN chown -R odoo /mnt/extra-addons/
 
 # Expose Odoo services
 EXPOSE 8069 8071 8072

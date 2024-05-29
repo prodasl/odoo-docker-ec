@@ -1,0 +1,2 @@
+TO RUN
+docker run -d -p 8069:8069 --mount source=data,target=/var/lib/odoo odoo-17-ec-dlt
